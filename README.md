@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/Irish3434/devlab/workflows/CI/badge.svg)](https://github.com/Irish3434/devlab/actions)
 
-A polished, professional Python application for detecting and managing duplicate images in large photo collections (up to 300,000+ files). Features perceptual hashing for accurate duplicate identification, automatic video separation, and user-configurable copy/move operations with timestamped filenames.
+**Picture Finder** - A polished, professional Python application for detecting and managing duplicate images in large photo collections (up to 300,000+ files). Features perceptual hashing for accurate duplicate identification, automatic video separation, and user-configurable copy/move operations with timestamped filenames.
 
 ## Features
 
