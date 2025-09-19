@@ -26,6 +26,7 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 import logging
+from typing import List, Tuple, Optional, Dict, Any
 
 # Add the project root to Python path for imports
 project_root = Path(__file__).parent.absolute()
@@ -58,12 +59,12 @@ except ImportError as e:
     sys.exit(1)
 
 
-def check_dependencies():
+def check_dependencies() -> Tuple[bool, List[str], List[str]]:
     """
     Check if all required dependencies are available.
     
     Returns:
-        tuple: (success: bool, missing_packages: list)
+        tuple: (success: bool, missing_packages: list, missing_optional: list)
     """
     required_packages = [
         ('PIL', 'Pillow'),
@@ -98,161 +99,40 @@ def check_dependencies():
     return len(missing) == 0, missing, missing_optional
 
 
-def setup_application_environment():
-    """Set up the application environment and logging."""
-    # Ensure output directories exist
-    output_dirs = ['logs', 'duplicates', 'unique_photos', 'videos']
+def setup_application_environment() -> bool:
+    """
+    Set up the application environment and create necessary directories.
     
-    for dir_name in output_dirs:
-        dir_path = Path(dir_name)
-        dir_path.mkdir(exist_ok=True)
-    
-    # Set up logging
-    log_file = setup_logging()
-    logger = get_logger()
-    
-    logger.log_info("Picture Finder application starting")
-    logger.log_info(f"Python version: {sys.version}")
-    logger.log_info(f"Working directory: {os.getcwd()}")
-    logger.log_info(f"Log file: {log_file}")
-    
-    return logger
+    Returns:
+        bool: True if setup successful, False otherwise
+    """
 
 
-def show_dependency_error(missing_packages, missing_optional):
-    """Show error dialog for missing dependencies."""
-    message = "Missing Required Dependencies:\n\n"
+def show_dependency_error(missing_packages: List[str], missing_optional: List[str]) -> None:
+    """
+    Display error message for missing dependencies.
     
-    if missing_packages:
-        message += "Required packages:\n"
-        for package in missing_packages:
-            message += f"  • {package}\n"
-        message += "\nPlease install with:\n"
-        message += "pip install -r requirements.txt\n\n"
-    
-    if missing_optional:
-        message += "Optional packages (recommended):\n"
-        for package in missing_optional:
-            message += f"  • {package}\n"
-        message += "\nThese packages provide enhanced features but are not required.\n"
-    
-    # Try to show GUI error, fallback to console
-    try:
-        root = tk.Tk()
-        root.withdraw()  # Hide the root window
-        messagebox.showerror("Dependency Error", message)
-        root.destroy()
-    except Exception:
-        print("DEPENDENCY ERROR:")
-        print(message)
+    Args:
+        missing_packages: List of missing required packages
+        missing_optional: List of missing optional packages
+    """
 
 
-def setup_gui_environment():
-    """Set up the GUI environment and handle platform-specific settings."""
-    # Create root window
-    root = tk.Tk()
+def setup_gui_environment() -> Optional[tk.Tk]:
+    """
+    Set up the GUI environment and return the root window.
     
-    # Platform-specific adjustments
-    if sys.platform == "darwin":  # macOS
-        try:
-            # Enable high-DPI support on macOS
-            root.tk.call('tk', 'scaling', 2.0)
-        except Exception:
-            pass
-    
-    elif sys.platform.startswith("win"):  # Windows
-        try:
-            # Enable DPI awareness on Windows
-            import ctypes
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)
-        except Exception:
-            pass
-    
-    # Set window properties
-    root.title("Picture Finder")
-    
-    # Center window on screen
-    root.update_idletasks()
-    width = 800
-    height = 700
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry(f"{width}x{height}+{x}+{y}")
-    
-    return root
+    Returns:
+        tk.Tk or None: Root window if successful, None if failed
+    """
 
 
-def main():
-    """Main application entry point."""
-    # Check dependencies first
-    deps_ok, missing_required, missing_optional = check_dependencies()
+def main() -> None:
+    """
+    Main application entry point.
     
-    if not deps_ok:
-        show_dependency_error(missing_required, missing_optional)
-        return 1
-    
-    # Warn about missing optional packages
-    if missing_optional:
-        print("Warning: Optional packages missing:")
-        for package in missing_optional:
-            print(f"  - {package}")
-        print("Some features may be limited. Install with:")
-        print("pip install " + " ".join(missing_optional))
-        print()
-    
-    try:
-        # Set up application environment
-        logger = setup_application_environment()
-        
-        # Log system information
-        logger.log_info(f"Operating System: {sys.platform}")
-        logger.log_info(f"Python executable: {sys.executable}")
-        
-        if missing_optional:
-            logger.log_warning(f"Missing optional packages: {', '.join(missing_optional)}")
-        
-        # Set up GUI
-        root = setup_gui_environment()
-        
-        # Create and run application
-        logger.log_info("Initializing GUI...")
-        app = PictureFinderGUI(root)
-        
-        logger.log_info("Starting main event loop")
-        root.mainloop()
-        
-        logger.log_info("Application closed normally")
-        return 0
-        
-    except KeyboardInterrupt:
-        print("\nApplication interrupted by user")
-        return 130
-        
-    except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        print(f"ERROR: {error_msg}")
-        
-        # Try to log the error
-        try:
-            logger = get_logger()
-            logger.log_error(error_msg)
-        except Exception:
-            pass
-        
-        # Show error dialog if possible
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showerror(
-                "Application Error",
-                f"An unexpected error occurred:\n\n{error_msg}\n\n"
-                "Check the log file for more details."
-            )
-            root.destroy()
-        except Exception:
-            pass
-        
-        return 1
+    Handles dependency checking, environment setup, and GUI initialization.
+    """
 
 
 if __name__ == "__main__":
