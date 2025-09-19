@@ -6,6 +6,7 @@ duplicate detection, batch processing, and performance optimization.
 import os
 import time
 import hashlib
+import asyncio
 from collections import defaultdict
 from multiprocessing import Pool, Manager, cpu_count
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,12 +15,13 @@ import threading
 from PIL import Image, ImageFile
 import imagehash
 from tqdm import tqdm
-from typing import List, Tuple, Dict, Optional, Callable, Any
+from typing import List, Tuple, Dict, Optional, Callable, Any, AsyncGenerator
 from pathlib import Path
 import psutil
 import gc
 
 from core.file_manager import FileManager
+from core.async_file_manager import get_async_file_manager
 from core.log_writer import get_logger
 
 
@@ -712,6 +714,138 @@ class ImageProcessor:
         )
         
         return results
+    
+    async def async_process_folder(self, folder_path: str, mode: str = 'copy',
+                                  chunk_size: Optional[int] = None, recursive: bool = False,
+                                  export_zip: bool = False) -> Dict[str, Any]:
+        """
+        Async version of folder processing with non-blocking operations.
+        
+        Args:
+            folder_path: Input folder path
+            mode: 'copy' or 'move' for non-duplicates
+            chunk_size: Batch size override
+            recursive: Scan recursively
+            export_zip: Create ZIP of unique photos
+            
+        Returns:
+            Processing results and statistics
+        """
+        start_time = time.time()
+        async_file_manager = get_async_file_manager()
+        
+        self.logger.log_info(f"Starting async folder processing: {folder_path}")
+        
+        # Phase 1: File discovery (async)
+        self.logger.log_info("Phase 1: Discovering files...")
+        file_paths = []
+        
+        # Use thread pool for file discovery to avoid blocking
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor(max_workers=self.optimal_threads) as executor:
+            file_paths = await loop.run_in_executor(
+                executor,
+                lambda: self.file_manager.discover_files(folder_path, recursive)
+            )
+        
+        if not file_paths:
+            return {'error': 'No files found in specified folder'}
+        
+        # Phase 2: Duplicate detection (parallel processing)
+        self.logger.log_info(f"Phase 2: Analyzing {len(file_paths)} files for duplicates...")
+        detection_results = await self._async_detect_duplicates(file_paths, chunk_size)
+        
+        # Phase 3: File operations (async batch processing)
+        self.logger.log_info("Phase 3: Processing files...")
+        operation_results = await self._async_process_files(detection_results, mode)
+        
+        # Phase 4: Export (if requested)
+        zip_path = None
+        if export_zip and operation_results['unique_files']:
+            self.logger.log_info("Phase 4: Creating ZIP export...")
+            zip_path = await self._async_create_zip_export(operation_results['unique_files'])
+        
+        total_time = time.time() - start_time
+        
+        results = {
+            'total_files': len(file_paths),
+            'duplicate_groups': len(detection_results['duplicate_groups']),
+            'total_duplicates': sum(len(group) - 1 for group in detection_results['duplicate_groups']),
+            'unique_files_processed': len(operation_results['unique_files']),
+            'videos_separated': detection_results['videos_separated'],
+            'processing_time': f"{total_time:.2f}s",
+            'zip_export_path': zip_path,
+            'errors': detection_results['errors'] + operation_results['errors']
+        }
+        
+        self.logger.log_session_summary(
+            total_processing_time=f"{total_time:.2f}s",
+            files_scanned=len(file_paths),
+            duplicate_groups_found=results['duplicate_groups'],
+            total_duplicates=results['total_duplicates'],
+            unique_files_processed=results['unique_files_processed']
+        )
+        
+        return results
+    
+    async def _async_detect_duplicates(self, file_paths: List[str], chunk_size: Optional[int]) -> Dict[str, Any]:
+        """Async duplicate detection with parallel processing."""
+        loop = asyncio.get_event_loop()
+        
+        # Run duplicate detection in thread pool to avoid blocking
+        with ThreadPoolExecutor(max_workers=self.optimal_threads) as executor:
+            detection_results = await loop.run_in_executor(
+                executor,
+                lambda: self.duplicate_detector.detect_duplicates(file_paths, chunk_size)
+            )
+        
+        return detection_results
+    
+    async def _async_process_files(self, detection_results: Dict[str, Any], mode: str) -> Dict[str, Any]:
+        """Async file processing with batch operations."""
+        async_file_manager = get_async_file_manager()
+        
+        operations = []
+        unique_files = detection_results.get('unique_files', [])
+        
+        # Prepare batch operations
+        for file_path in unique_files:
+            if mode == 'copy':
+                dst = self.file_manager.get_unique_destination(file_path)
+                operations.append({'type': 'copy', 'src': file_path, 'dst': dst})
+            elif mode == 'move':
+                dst = self.file_manager.get_unique_destination(file_path)
+                operations.append({'type': 'move', 'src': file_path, 'dst': dst})
+        
+        # Execute operations in batches
+        batch_size = 10
+        successful_ops = 0
+        errors = 0
+        
+        for i in range(0, len(operations), batch_size):
+            batch = operations[i:i + batch_size]
+            results = await async_file_manager.batch_process_files(batch)
+            
+            successful_ops += sum(1 for r in results if r)
+            errors += sum(1 for r in results if not r)
+        
+        return {
+            'unique_files': unique_files,
+            'successful_operations': successful_ops,
+            'errors': errors
+        }
+    
+    async def _async_create_zip_export(self, file_paths: List[str]) -> Optional[str]:
+        """Async ZIP export creation."""
+        loop = asyncio.get_event_loop()
+        
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            zip_path = await loop.run_in_executor(
+                executor,
+                lambda: self.file_manager.create_zip_export(file_paths)
+            )
+        
+        return zip_path
     
     def set_progress_callback(self, callback: Callable[[int, int, str], None]):
         """Set progress callback for GUI updates."""

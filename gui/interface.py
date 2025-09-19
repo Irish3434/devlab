@@ -6,6 +6,7 @@ internationalization support, and comprehensive user experience features.
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox
 import threading
+import asyncio
 import os
 from pathlib import Path
 from typing import Optional, Callable, Dict, Any
@@ -130,6 +131,7 @@ class SettingsTab:
         self.recursive_scan = tk.BooleanVar(value=False)
         self.auto_export = tk.BooleanVar(value=False)
         self.compression_level = tk.IntVar(value=6)
+        self.use_async = tk.BooleanVar(value=True)  # Enable async by default
         
         self._create_widgets()
     
@@ -337,6 +339,29 @@ class SettingsTab:
         )
         language_combo.pack(anchor='w', padx=10, pady=(0, 10))
         
+        # Performance Settings Section
+        perf_frame = ttk.LabelFrame(
+            scrollable_frame,
+            text=f"{ICONS['settings']} Performance Settings",
+            style='Card.TFrame'
+        )
+        perf_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Async processing checkbox
+        async_check = ttk.Checkbutton(
+            perf_frame,
+            text="Enable Async Processing (Recommended)",
+            variable=self.use_async,
+            style='PF.TCheckbutton'
+        )
+        async_check.pack(anchor='w', padx=10, pady=10)
+        
+        ttk.Label(
+            perf_frame,
+            text="Async processing provides better performance and responsiveness",
+            style='Status.TLabel'
+        ).pack(anchor='w', padx=10, pady=(0, 10))
+        
         # Reset Settings Button
         reset_button = create_icon_button(
             scrollable_frame,
@@ -395,6 +420,7 @@ class SettingsTab:
             self.recursive_scan.set(False)
             self.auto_export.set(False)
             self.compression_level.set(6)
+            self.use_async.set(True)  # Reset async to enabled
             
             # Update scale labels
             self._on_threshold_change(10)
@@ -410,7 +436,8 @@ class SettingsTab:
             'language': self.language.get(),
             'recursive_scan': self.recursive_scan.get(),
             'auto_export': self.auto_export.get(),
-            'compression_level': self.compression_level.get()
+            'compression_level': self.compression_level.get(),
+            'use_async': self.use_async.get()
         }
 
 
@@ -737,24 +764,49 @@ class MainTab:
         self.processing_thread.start()
     
     def _process_photos(self, folder: str, settings: Dict[str, Any]):
-        """Process photos in background thread."""
+        """Process photos in background thread with async support."""
         try:
             self.status_text.set("Processing photos...")
-            
-            # Process folder
-            results = self.processor.process_folder(
+
+            # Check if async processing is available and enabled
+            use_async = hasattr(self.processor, 'async_process_folder') and settings.get('use_async', True)
+
+            if use_async:
+                # Use asyncio for non-blocking processing
+                asyncio.run(self._async_process_photos(folder, settings))
+            else:
+                # Fallback to synchronous processing
+                results = self.processor.process_folder(
+                    folder_path=folder,
+                    mode=self.operation_mode.get(),
+                    chunk_size=settings['chunk_size'],
+                    recursive=settings['recursive_scan'],
+                    export_zip=settings['auto_export']
+                )
+                # Update UI on main thread
+                self.frame.after(0, self._processing_completed, results)
+
+        except Exception as e:
+            self.logger.log_error(f"Processing failed: {str(e)}")
+            self.frame.after(0, self._processing_failed, str(e))
+
+    async def _async_process_photos(self, folder: str, settings: Dict[str, Any]):
+        """Async version of photo processing."""
+        try:
+            # Process folder asynchronously
+            results = await self.processor.async_process_folder(
                 folder_path=folder,
                 mode=self.operation_mode.get(),
                 chunk_size=settings['chunk_size'],
                 recursive=settings['recursive_scan'],
                 export_zip=settings['auto_export']
             )
-            
+
             # Update UI on main thread
             self.frame.after(0, self._processing_completed, results)
-            
+
         except Exception as e:
-            self.logger.log_error(f"Processing failed: {str(e)}")
+            self.logger.log_error(f"Async processing failed: {str(e)}")
             self.frame.after(0, self._processing_failed, str(e))
     
     def _update_progress(self, current: int, total: int, message: str):
