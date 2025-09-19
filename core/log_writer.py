@@ -296,3 +296,38 @@ def log_file_operation(operation: str, source: str, destination: str = None,
 def log_session_summary(**summary_data):
     """Log session summary."""
     get_logger().log_session_summary(**summary_data)
+
+
+def setup_logging(log_dir: str = "logs") -> str:
+    """
+    Set up application-wide logging.
+    
+    Args:
+        log_dir: Directory to store log files
+        
+    Returns:
+        Path to the log file
+    """
+    global _logger_instance
+    
+    # Ensure log directory exists
+    Path(log_dir).mkdir(exist_ok=True)
+    
+    # Initialize logger with custom directory
+    _logger_instance = PictureFinderLogger(log_dir=log_dir)
+    
+    # Return log file path
+    return str(_logger_instance.log_file)
+
+
+def create_log_file(log_dir: str = "logs") -> str:
+    """
+    Create a new log file (legacy compatibility function).
+    
+    Args:
+        log_dir: Directory to store log files
+        
+    Returns:
+        Path to the log file
+    """
+    return setup_logging(log_dir)

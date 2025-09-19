@@ -1048,21 +1048,106 @@ class PictureFinderGUI:
         add_tooltip(settings_frame, "Configure detection and processing settings")
     
     def _setup_keyboard_shortcuts(self):
-        """Set up keyboard shortcuts for accessibility."""
-        # Ctrl+O: Browse for folder
+        """Set up enhanced keyboard shortcuts for accessibility."""
+        # File operations
         self.root.bind('<Control-o>', lambda e: self.main_tab._browse_folder())
+        self.root.bind('<Control-s>', lambda e: self._save_settings())
+        self.root.bind('<Control-e>', lambda e: self.main_tab._export_zip())
         
-        # F5: Start processing
+        # Processing controls
         self.root.bind('<F5>', lambda e: self.main_tab._start_processing())
+        self.root.bind('<Escape>', lambda e: self._cancel_processing())
         
-        # F1: Show help
+        # Navigation and help
         self.root.bind('<F1>', lambda e: self.main_tab._show_help())
-        
-        # Ctrl+L: View logs
+        self.root.bind('<Control-h>', lambda e: self._show_accessibility_help())
         self.root.bind('<Control-l>', lambda e: self.main_tab._view_logs())
         
-        # Ctrl+E: Export ZIP
-        self.root.bind('<Control-e>', lambda e: self.main_tab._export_zip())
+        # Tab navigation
+        self.root.bind('<Control-Tab>', lambda e: self._next_tab())
+        self.root.bind('<Control-Shift-Tab>', lambda e: self._previous_tab())
+        
+        # Accessibility toggles
+        self.root.bind('<Control-Alt-h>', lambda e: self._toggle_high_contrast())
+        self.root.bind('<Control-Alt-t>', lambda e: self._toggle_tooltips())
+        
+        # Quick actions
+        self.root.bind('<Control-r>', lambda e: self._refresh_folder())
+        self.root.bind('<Control-q>', lambda e: self._on_closing())
+    
+    def _save_settings(self):
+        """Save current settings."""
+        if hasattr(self, 'settings_tab'):
+            self.settings_tab._save_settings()
+    
+    def _cancel_processing(self):
+        """Cancel current processing."""
+        if hasattr(self.main_tab, 'processor') and self.main_tab.processor:
+            self.main_tab.processor.cancel_processing()
+    
+    def _show_accessibility_help(self):
+        """Show accessibility help dialog."""
+        help_text = """
+Accessibility Keyboard Shortcuts:
+
+File Operations:
+• Ctrl+O: Browse for folder
+• Ctrl+S: Save settings
+• Ctrl+E: Export results to ZIP
+
+Processing:
+• F5: Start processing
+• Escape: Cancel processing
+
+Navigation:
+• F1: Show help
+• Ctrl+H: Show this accessibility help
+• Ctrl+L: View logs
+• Ctrl+Tab: Next tab
+• Ctrl+Shift+Tab: Previous tab
+
+Accessibility:
+• Ctrl+Alt+H: Toggle high contrast mode
+• Ctrl+Alt+T: Toggle enhanced tooltips
+
+Quick Actions:
+• Ctrl+R: Refresh folder
+• Ctrl+Q: Quit application
+
+All buttons and controls are keyboard accessible using Tab/Shift+Tab navigation.
+"""
+        messagebox.showinfo("Accessibility Help", help_text)
+    
+    def _next_tab(self):
+        """Navigate to next tab."""
+        if hasattr(self, 'notebook'):
+            current = self.notebook.index('current')
+            total = self.notebook.index('end')
+            next_tab = (current + 1) % total
+            self.notebook.select(next_tab)
+    
+    def _previous_tab(self):
+        """Navigate to previous tab."""
+        if hasattr(self, 'notebook'):
+            current = self.notebook.index('current')
+            total = self.notebook.index('end')
+            prev_tab = (current - 1) % total
+            self.notebook.select(prev_tab)
+    
+    def _toggle_high_contrast(self):
+        """Toggle high contrast mode."""
+        if hasattr(self, 'theme'):
+            self.theme.toggle_high_contrast()
+    
+    def _toggle_tooltips(self):
+        """Toggle enhanced tooltips."""
+        if hasattr(self, 'theme'):
+            self.theme.toggle_enhanced_tooltips()
+    
+    def _refresh_folder(self):
+        """Refresh current folder selection."""
+        if hasattr(self.main_tab, '_browse_folder'):
+            self.main_tab._browse_folder()
     
     def _on_closing(self):
         """Handle application closing."""

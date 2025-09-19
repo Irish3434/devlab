@@ -500,6 +500,94 @@ class FileManager:
                     self.logger.log_info(f"Removed empty directory: {path}")
         except Exception as e:
             self.logger.log_error(f"Failed to cleanup empty directories: {str(e)}")
+    
+    def validate_file_permissions(self, file_path: Path) -> bool:
+        """
+        Validate file permissions for security.
+        
+        Args:
+            file_path: Path to validate
+            
+        Returns:
+            True if file permissions are safe
+        """
+        try:
+            stat_info = file_path.stat()
+            
+            # Check if file is readable
+            if not os.access(file_path, os.R_OK):
+                self.logger.log_warning(f"File not readable: {file_path}")
+                return False
+            
+            # Check for suspicious permissions (world-writable)
+            if stat_info.st_mode & 0o002:
+                self.logger.log_warning(f"World-writable file detected: {file_path}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.log_error(f"Permission validation failed for {file_path}: {str(e)}")
+            return False
+    
+    def validate_file_type(self, file_path: Path) -> bool:
+        """
+        Validate file type using both extension and MIME type.
+        
+        Args:
+            file_path: Path to validate
+            
+        Returns:
+            True if file type is safe
+        """
+        try:
+            # Check extension
+            ext = file_path.suffix.lower()
+            if ext not in self.IMAGE_EXTENSIONS and ext not in self.VIDEO_EXTENSIONS:
+                return False
+            
+            # Check MIME type
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if mime_type:
+                if not (mime_type.startswith('image/') or mime_type.startswith('video/')):
+                    self.logger.log_warning(f"Suspicious MIME type for {file_path}: {mime_type}")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.log_error(f"File type validation failed for {file_path}: {str(e)}")
+            return False
+    
+    def secure_file_operation(self, operation_func, *args, **kwargs):
+        """
+        Wrapper for secure file operations with validation.
+        
+        Args:
+            operation_func: Function to execute
+            *args: Function arguments
+            **kwargs: Function keyword arguments
+            
+        Returns:
+            Operation result or None if validation fails
+        """
+        try:
+            # Validate all file paths in arguments
+            for arg in args:
+                if isinstance(arg, (str, Path)):
+                    path_obj = Path(arg)
+                    if path_obj.exists() and path_obj.is_file():
+                        if not self.validate_file_permissions(path_obj):
+                            return None
+                        if not self.validate_file_type(path_obj):
+                            return None
+            
+            # Execute operation
+            return operation_func(*args, **kwargs)
+            
+        except Exception as e:
+            self.logger.log_error(f"Secure operation failed: {str(e)}")
+            return None
 
 
 # Convenience functions for backward compatibility

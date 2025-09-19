@@ -8,14 +8,23 @@ A polished, professional Python application for detecting and managing duplicate
 
 ## Features
 
-- **🔍 Duplicate Detection**: Uses `imagehash.average_hash` to detect near-duplicates with adjustable similarity threshold (1-20)
-- **📹 Video Separation**: Automatically moves videos (>50MB or .mp4/.mov/.avi/.mkv) to separate folder
-- **📁 Smart Organization**: Copy/move non-duplicates with timestamp-based naming to prevent overwrites
-- **🚀 Performance Optimized**: Batch processing with configurable CPU/RAM usage modes
-- **🎨 Polished GUI**: Responsive Tkinter interface with teal/white theme and accessibility features
-- **📦 Export Capability**: ZIP export of unique photos with compression options
-- **🌍 Internationalization**: Multi-language support (English, Spanish, French)
-- **📊 Comprehensive Logging**: Detailed performance metrics and operation logs
+### Core Functionality
+- **🔍 Advanced Duplicate Detection**: Multi-algorithm support (average, perceptual, difference, wavelet hashing) with intelligent caching
+- **📹 Smart Video Separation**: Automatically detects and organizes videos with size-based validation
+- **📁 Intelligent Organization**: Copy/move operations with timestamp-based naming and conflict resolution
+- **🚀 Performance Optimized**: Dynamic thread allocation, batch processing, and comprehensive performance monitoring
+
+### User Experience
+- **🎨 Accessible GUI**: Professional interface with high-contrast mode, keyboard navigation, and enhanced tooltips
+- **📦 Secure Export**: Password-protected ZIP compression with multiple security layers
+- **🌍 Multi-language Support**: Internationalization ready (English, Spanish, French)
+- **⚙️ Advanced Configuration**: Persistent settings with validation and easy customization
+
+### Technical Excellence
+- **📊 Performance Monitoring**: Real-time metrics, cache hit rates, and detailed analytics
+- **🔒 Security First**: Path sanitization, file validation, and permission checking
+- **🧩 Plugin Architecture**: Extensible hash algorithm system for future enhancements
+- **📋 Comprehensive Logging**: Multi-format output with performance profiling
 
 ## System Architecture
 

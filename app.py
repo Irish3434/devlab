@@ -35,7 +35,8 @@ if str(project_root) not in sys.path:
 try:
     # Core imports
     from gui.interface import PictureFinderGUI
-    from core.log_writer import setup_logging, get_logger
+    from core.log_writer import get_logger, setup_logging
+    from core.config import get_config
     
     # Optional imports for enhanced features
     try:

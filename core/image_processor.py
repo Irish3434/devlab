@@ -90,11 +90,12 @@ class ImageHasher:
         self.algorithm = algorithm
         self.hash_size = hash_size
         self.hash_function = self.HASH_ALGORITHMS.get(algorithm, imagehash.average_hash)
+        self.hash_cache = {}  # Cache for performance improvement
         self.logger = get_logger()
     
     def hash_file(self, file_path: str, max_size: Tuple[int, int] = (1024, 1024)) -> Tuple[Optional[str], str, Dict[str, Any]]:
         """
-        Calculate hash for a single image file with enhanced error handling.
+        Calculate hash for a single image file with enhanced error handling and caching.
         
         Args:
             file_path: Path to the image file
@@ -108,7 +109,8 @@ class ImageHasher:
             'image_size': (0, 0),
             'format': None,
             'error': None,
-            'processing_time': 0
+            'processing_time': 0,
+            'from_cache': False
         }
         
         start_time = time.time()
@@ -121,6 +123,15 @@ class ImageHasher:
                 return None, file_path, metadata
             
             metadata['file_size'] = path_obj.stat().st_size
+            
+            # Check cache first (based on file path, size, and modification time)
+            file_stat = path_obj.stat()
+            cache_key = f"{file_path}:{file_stat.st_size}:{file_stat.st_mtime}:{self.algorithm}"
+            
+            if cache_key in self.hash_cache:
+                metadata['from_cache'] = True
+                metadata['processing_time'] = time.time() - start_time
+                return self.hash_cache[cache_key], file_path, metadata
             
             # Skip very large files that might cause memory issues
             if metadata['file_size'] > 100 * 1024 * 1024:  # 100MB
@@ -146,6 +157,9 @@ class ImageHasher:
                 hash_obj = self.hash_function(img, hash_size=self.hash_size)
                 hash_string = str(hash_obj)
                 
+                # Store in cache
+                self.hash_cache[cache_key] = hash_string
+                
                 metadata['processing_time'] = time.time() - start_time
                 return hash_string, file_path, metadata
                 
@@ -162,6 +176,18 @@ class ImageHasher:
         
         metadata['processing_time'] = time.time() - start_time
         return None, file_path, metadata
+    
+    def clear_cache(self):
+        """Clear the hash cache to free memory."""
+        self.hash_cache.clear()
+        self.logger.log_info("Hash cache cleared")
+    
+    def get_cache_stats(self) -> Dict[str, int]:
+        """Get cache statistics."""
+        return {
+            'cache_size': len(self.hash_cache),
+            'memory_usage_estimate': len(self.hash_cache) * 100  # Rough estimate in bytes
+        }
 
 
 class DuplicateDetector:
@@ -463,8 +489,100 @@ class DuplicateDetector:
         return merged_groups
 
 
+class AdvancedPerformanceMonitor:
+    """Advanced performance monitoring with detailed metrics."""
+    
+    def __init__(self):
+        """Initialize performance monitor."""
+        self.metrics = {
+            'start_time': None,
+            'end_time': None,
+            'total_files': 0,
+            'files_per_second': 0,
+            'memory_usage': [],
+            'cpu_usage': [],
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'error_count': 0,
+            'algorithm_performance': {},
+            'phase_times': {}
+        }
+        self.phase_start_times = {}
+    
+    def start_monitoring(self):
+        """Start performance monitoring."""
+        self.metrics['start_time'] = time.time()
+        self._log_system_info()
+    
+    def start_phase(self, phase_name: str):
+        """Start timing a processing phase."""
+        self.phase_start_times[phase_name] = time.time()
+    
+    def end_phase(self, phase_name: str):
+        """End timing a processing phase."""
+        if phase_name in self.phase_start_times:
+            duration = time.time() - self.phase_start_times[phase_name]
+            self.metrics['phase_times'][phase_name] = duration
+    
+    def record_cache_hit(self):
+        """Record a cache hit."""
+        self.metrics['cache_hits'] += 1
+    
+    def record_cache_miss(self):
+        """Record a cache miss."""
+        self.metrics['cache_misses'] += 1
+    
+    def record_error(self):
+        """Record an error."""
+        self.metrics['error_count'] += 1
+    
+    def update_file_count(self, count: int):
+        """Update total file count."""
+        self.metrics['total_files'] = count
+    
+    def end_monitoring(self):
+        """End performance monitoring and calculate final metrics."""
+        self.metrics['end_time'] = time.time()
+        
+        if self.metrics['start_time']:
+            total_time = self.metrics['end_time'] - self.metrics['start_time']
+            if total_time > 0:
+                self.metrics['files_per_second'] = self.metrics['total_files'] / total_time
+    
+    def get_cache_hit_rate(self) -> float:
+        """Calculate cache hit rate."""
+        total_requests = self.metrics['cache_hits'] + self.metrics['cache_misses']
+        if total_requests == 0:
+            return 0.0
+        return self.metrics['cache_hits'] / total_requests * 100
+    
+    def _log_system_info(self):
+        """Log system information for performance context."""
+        try:
+            import psutil
+            self.metrics['system_info'] = {
+                'cpu_count': psutil.cpu_count(),
+                'memory_total': psutil.virtual_memory().total,
+                'memory_available': psutil.virtual_memory().available
+            }
+        except ImportError:
+            pass
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get comprehensive performance summary."""
+        return {
+            'execution_time': self.metrics.get('end_time', 0) - self.metrics.get('start_time', 0),
+            'files_processed': self.metrics['total_files'],
+            'processing_rate': self.metrics['files_per_second'],
+            'cache_hit_rate': self.get_cache_hit_rate(),
+            'error_rate': (self.metrics['error_count'] / max(self.metrics['total_files'], 1)) * 100,
+            'phase_breakdown': self.metrics['phase_times'],
+            'system_info': self.metrics.get('system_info', {})
+        }
+
+
 class ImageProcessor:
-    """Main image processor class combining all functionality."""
+    """Enhanced image processor with performance monitoring and optimization."""
     
     def __init__(self, output_dir: str = ".", performance_mode: str = 'high',
                  hash_algorithm: str = 'average', similarity_threshold: int = 10):
@@ -475,14 +593,37 @@ class ImageProcessor:
             output_dir: Output directory for processed files
             performance_mode: 'low', 'medium', or 'high'
             hash_algorithm: Hash algorithm to use
-            similarity_threshold: Similarity threshold for duplicates
+            similarity_threshold: Similarities threshold for duplicates
         """
         self.output_dir = output_dir
         self.file_manager = FileManager(output_dir)
         self.duplicate_detector = DuplicateDetector(
             similarity_threshold, hash_algorithm, performance_mode
         )
+        self.performance_monitor = AdvancedPerformanceMonitor()
         self.logger = get_logger()
+        
+        # Dynamic thread allocation based on system resources
+        self.optimal_threads = self._calculate_optimal_threads()
+    
+    def _calculate_optimal_threads(self) -> int:
+        """Calculate optimal thread count based on system resources."""
+        try:
+            import psutil
+            cpu_count = psutil.cpu_count()
+            memory_gb = psutil.virtual_memory().total / (1024**3)
+            
+            # Conservative thread allocation
+            if memory_gb < 4:
+                return max(2, cpu_count // 2)
+            elif memory_gb < 8:
+                return max(4, cpu_count - 1)
+            else:
+                return cpu_count
+                
+        except ImportError:
+            import multiprocessing
+            return max(2, multiprocessing.cpu_count() - 1)
     
     def process_folder(self, folder_path: str, mode: str = 'copy', 
                       chunk_size: Optional[int] = None, recursive: bool = False,

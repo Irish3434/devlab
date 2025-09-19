@@ -1,0 +1,12 @@
+2025-09-18 23:16:46 - INFO - Picture Finder session started
+2025-09-18 23:16:46 - INFO - System: darwin, CPU cores: 12, RAM: 32.0GB
+2025-09-18 23:16:46 - INFO - Picture Finder application starting
+2025-09-18 23:16:46 - INFO - Python version: 3.9.6 (default, Apr 30 2025, 02:07:18) 
+[Clang 17.0.0 (clang-1700.0.13.5)]
+2025-09-18 23:16:46 - INFO - Working directory: /Users/mike/Documents/dev enviroment/PictureFinder
+2025-09-18 23:16:46 - INFO - Log file: logs/picture_finder_log_20250918_231646.txt
+2025-09-18 23:16:46 - INFO - Operating System: darwin
+2025-09-18 23:16:46 - INFO - Python executable: /Library/Developer/CommandLineTools/usr/bin/python3
+2025-09-18 23:16:46 - WARNING - Missing optional packages: ttkthemes, babel
+2025-09-18 23:16:46 - INFO - Initializing GUI...
+2025-09-18 23:16:46 - ERROR - Unexpected error: Layout Horizontal.PF.TScale not found

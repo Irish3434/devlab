@@ -1,28 +1,34 @@
 # GitHub Repository Setup Instructions
 
-## SSH Key Authentication (Recommended & Secure)
+## 🔑 Personal Access Token Method (EASIEST)
 
-✅ **SSH Key Generated Successfully!**
+### Step 1: Create Your Token
 
-Your SSH key has been created and is ready to use. Follow these steps:
+1. **Quick Link:** https://github.com/settings/tokens/new?scopes=repo&description=Picture%20Finder%20Upload
 
-### Step 1: Add SSH Key to GitHub
+2. **Manual Setup:**
+   - Go to GitHub.com → Profile → Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - Click **"Generate new token (classic)"**
+   - Token name: `Picture Finder Upload`
+   - Expiration: 90 days (or No expiration)
+   - Select scope: ☑️ **repo** (Full control of private repositories)
+   - Click **"Generate token"**
+   - **COPY the token** (starts with ghp_...)
 
-1. **Copy this SSH key:**
-   ```
-   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIcFGne2K0W46udI3LOkbtd/5Vc3xOu+00G9WK4oNVnO irish3434@users.noreply.github.com
-   ```
+### Step 2: Upload Your Project
 
-2. **Add to GitHub:**
-   - Go to [GitHub.com](https://github.com) and sign in
-   - Click your profile picture → **Settings**  
-   - In the left sidebar, click **SSH and GPG keys**
-   - Click **New SSH key** (green button)
-   - Title: `MacBook Pro - Picture Finder`
-   - Paste the key above into the **Key** field
-   - Click **Add SSH key**
+Run this command:
+```bash
+git push -u origin main
+```
 
-### Step 2: Push to Repository
+When prompted:
+- **Username:** `Irish3434`
+- **Password:** `[PASTE YOUR TOKEN HERE]` (NOT your GitHub password)
+
+### Step 3: Success! 
+
+Your repository will be available at: https://github.com/Irish3434/devlab
 
 After adding the SSH key to GitHub, run this command:
 

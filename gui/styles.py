@@ -3,7 +3,12 @@ Enhanced styling system for Picture Finder GUI with teal/white theme,
 accessibility features, and polished visual design.
 """
 
-from ttkthemes import ThemedStyle
+try:
+    from ttkthemes import ThemedStyle
+    TTKTHEMES_AVAILABLE = True
+except ImportError:
+    TTKTHEMES_AVAILABLE = False
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -36,16 +41,38 @@ class PictureFinderTheme:
             root: Root Tkinter window
         """
         self.root = root
-        self.style = ThemedStyle(root)
+        self.high_contrast_mode = False
+        self.enhanced_tooltips = False
         
-        # Try to use a modern theme as base
-        try:
-            self.style.set_theme('equilux')
-        except:
+        if TTKTHEMES_AVAILABLE:
+            self.style = ThemedStyle(root)
+            # Try to use a modern theme as base
             try:
-                self.style.set_theme('arc')
+                self.style.set_theme('equilux')
             except:
-                pass  # Fall back to default
+                try:
+                    self.style.set_theme('arc')
+                except:
+                    pass  # Fall back to default
+        else:
+            self.style = ttk.Style()
+        
+        # High contrast colors
+        self.HIGH_CONTRAST_COLORS = {
+            'primary_bg': '#000000',      # Black background
+            'secondary_bg': '#FFFFFF',    # White background
+            'primary_accent': '#FFFF00',   # Yellow accent
+            'secondary_accent': '#FFFFFF', # White accent
+            'text_primary': '#FFFFFF',     # White text
+            'text_secondary': '#000000',   # Black text
+            'text_dark': '#FFFFFF',        # White text on dark
+            'success': '#00FF00',          # Bright green
+            'warning': '#FFFF00',          # Bright yellow
+            'error': '#FF0000',            # Bright red
+            'disabled': '#808080',         # Gray for disabled elements
+            'border': '#FFFFFF',           # White borders
+            'hover': '#FFFF00'             # Yellow for hover
+        }
     
     def apply_theme(self):
         """Apply the complete Picture Finder theme."""
@@ -402,7 +429,7 @@ class PictureFinderTheme:
         return separator
 
 
-def apply_styles(style: ThemedStyle, root: tk.Tk = None) -> PictureFinderTheme:
+def apply_styles(style = None, root: tk.Tk = None) -> PictureFinderTheme:
     """
     Legacy function for backward compatibility.
     
@@ -582,6 +609,37 @@ def create_icon_button(parent, text: str, command=None, icon_char: str = None,
     )
     
     return button
+
+
+    def get_current_colors(self):
+        """Get current color scheme based on accessibility mode."""
+        return self.HIGH_CONTRAST_COLORS if self.high_contrast_mode else self.COLORS
+    
+    def toggle_high_contrast(self):
+        """Toggle high contrast mode for accessibility."""
+        self.high_contrast_mode = not self.high_contrast_mode
+        
+        # Update color references
+        colors = self.get_current_colors()
+        
+        # Re-apply theme with new colors
+        self._update_colors(colors)
+        self.apply_theme()
+        
+        # Show notification
+        mode = "High Contrast" if self.high_contrast_mode else "Normal"
+        tk.messagebox.showinfo("Accessibility", f"Switched to {mode} mode")
+    
+    def toggle_enhanced_tooltips(self):
+        """Toggle enhanced tooltips with more information."""
+        self.enhanced_tooltips = not self.enhanced_tooltips
+        
+        status = "enabled" if self.enhanced_tooltips else "disabled"
+        tk.messagebox.showinfo("Accessibility", f"Enhanced tooltips {status}")
+    
+    def _update_colors(self, new_colors):
+        """Update the color palette."""
+        self.COLORS = new_colors
 
 
 # Common icons (Unicode characters)
