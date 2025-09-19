@@ -1,0 +1,32 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+*.pyd
+*.so
+
+# Runtime
+unique_photos/
+videos/
+*.log
+*.zip
+
+# VSCode
+.vscode/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution
+build/
+dist/
